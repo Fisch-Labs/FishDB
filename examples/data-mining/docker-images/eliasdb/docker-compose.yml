@@ -1,0 +1,31 @@
+version: "3"
+
+# Sample file to just spin up the fishdb cluster
+
+services:
+  fishdb1:
+    image: data-mining/fishdb1:latest
+    container_name: fishdb1
+    ports:
+      - 4041:9090
+    networks:
+      - back-tier
+
+  fishdb2:
+    image: data-mining/fishdb2:latest
+    container_name: fishdb2
+    ports:
+      - 4042:9090
+    networks:
+      - back-tier
+
+  fishdb3:
+    image: data-mining/fishdb3:latest
+    container_name: fishdb3
+    ports:
+      - 4043:9090
+    networks:
+      - back-tier
+
+networks:
+  back-tier:

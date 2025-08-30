@@ -1,0 +1,176 @@
+/*
+ * FishDB
+ *
+// Copyright 2025 Fisch-labs
+ *
+*/
+
+package config
+
+import (
+	"fmt"
+	"path"
+	"strconv"
+
+	"github.com/Fisch-Labs/common/errorutil"
+	"github.com/Fisch-Labs/common/fileutil"
+)
+
+// Global variables
+// ================
+
+/*
+ProductVersion is the current version of FishDB
+*/
+const ProductVersion = "1.3.0"
+
+/*
+DefaultConfigFile is the default config file which will be used to configure FishDB
+*/
+var DefaultConfigFile = "fishdb.config.json"
+
+/*
+Known configuration options for FishDB
+*/
+const (
+	MemoryOnlyStorage        = "MemoryOnlyStorage"
+	LocationDatastore        = "LocationDatastore"
+	LocationHTTPS            = "LocationHTTPS"
+	LocationWebFolder        = "LocationWebFolder"
+	LocationUserDB           = "LocationUserDB"
+	LocationAccessDB         = "LocationAccessDB"
+	HTTPSCertificate         = "HTTPSCertificate"
+	HTTPSKey                 = "HTTPSKey"
+	LockFile                 = "LockFile"
+	HTTPSHost                = "HTTPSHost"
+	HTTPSPort                = "HTTPSPort"
+	CookieMaxAgeSeconds      = "CookieMaxAgeSeconds"
+	EnableReadOnly           = "EnableReadOnly"
+	EnableECALScripts        = "EnableECALScripts"
+	EnableECALDebugServer    = "EnableECALDebugServer"
+	EnableWebFolder          = "EnableWebFolder"
+	EnableAccessControl      = "EnableAccessControl"
+	EnableWebTerminal        = "EnableWebTerminal"
+	EnableCluster            = "EnableCluster"
+	EnableClusterTerminal    = "EnableClusterTerminal"
+	ResultCacheMaxSize       = "ResultCacheMaxSize"
+	ResultCacheMaxAgeSeconds = "ResultCacheMaxAgeSeconds"
+	ClusterStateInfoFile     = "ClusterStateInfoFile"
+	ClusterConfigFile        = "ClusterConfigFile"
+	ClusterLogHistory        = "ClusterLogHistory"
+	ECALScriptFolder         = "ECALScriptFolder"
+	ECALWorkerCount          = "ECALWorkerCount"
+	ECALEntryScript          = "ECALEntryScript"
+	ECALLogLevel             = "ECALLogLevel"
+	ECALLogFile              = "ECALLogFile"
+	ECALDebugServerHost      = "ECALDebugServerHost"
+	ECALDebugServerPort      = "ECALDebugServerPort"
+)
+
+/*
+DefaultConfig is the defaut configuration
+*/
+var DefaultConfig = map[string]interface{}{
+	MemoryOnlyStorage:        false,
+	EnableReadOnly:           false,
+	EnableECALScripts:        false,
+	EnableECALDebugServer:    false,
+	EnableWebFolder:          true,
+	EnableAccessControl:      false,
+	EnableWebTerminal:        true,
+	EnableCluster:            false,
+	EnableClusterTerminal:    false,
+	LocationDatastore:        "db",
+	LocationHTTPS:            "ssl",
+	LocationWebFolder:        "web",
+	LocationUserDB:           "users.db",
+	LocationAccessDB:         "access.db",
+	HTTPSHost:                "127.0.0.1",
+	HTTPSPort:                "9090",
+	CookieMaxAgeSeconds:      "86400",
+	HTTPSCertificate:         "cert.pem",
+	HTTPSKey:                 "key.pem",
+	LockFile:                 "fishdb.lck",
+	ResultCacheMaxSize:       0,
+	ResultCacheMaxAgeSeconds: 0,
+	ClusterStateInfoFile:     "cluster.stateinfo",
+	ClusterConfigFile:        "cluster.config.json",
+	ClusterLogHistory:        100.0,
+	ECALScriptFolder:         "scripts",
+	ECALWorkerCount:          10,
+	ECALEntryScript:          "main.ecal",
+	ECALLogLevel:             "info",
+	ECALLogFile:              "",
+	ECALDebugServerHost:      "127.0.0.1",
+	ECALDebugServerPort:      "33274",
+}
+
+/*
+Config is the actual config which is used
+*/
+var Config map[string]interface{}
+
+/*
+LoadConfigFile loads a given config file. If the config file does not exist it is
+created with the default options.
+*/
+func LoadConfigFile(configfile string) error {
+	var err error
+
+	Config, err = fileutil.LoadConfig(configfile, DefaultConfig)
+
+	return err
+}
+
+/*
+LoadDefaultConfig loads the default configuration.
+*/
+func LoadDefaultConfig() {
+	data := make(map[string]interface{})
+	for k, v := range DefaultConfig {
+		data[k] = v
+	}
+
+	Config = data
+}
+
+// Helper functions
+// ================
+
+/*
+Str reads a config value as a string value.
+*/
+func Str(key string) string {
+	return fmt.Sprint(Config[key])
+}
+
+/*
+Int reads a config value as an int value.
+*/
+func Int(key string) int64 {
+	ret, err := strconv.ParseInt(fmt.Sprint(Config[key]), 10, 64)
+
+	errorutil.AssertTrue(err == nil,
+		fmt.Sprintf("Could not parse config key %v: %v", key, err))
+
+	return ret
+}
+
+/*
+Bool reads a config value as a boolean value.
+*/
+func Bool(key string) bool {
+	ret, err := strconv.ParseBool(fmt.Sprint(Config[key]))
+
+	errorutil.AssertTrue(err == nil,
+		fmt.Sprintf("Could not parse config key %v: %v", key, err))
+
+	return ret
+}
+
+/*
+WebPath returns a path relative to the web directory.
+*/
+func WebPath(parts ...string) string {
+	return path.Join("web", path.Join(parts...))
+}
