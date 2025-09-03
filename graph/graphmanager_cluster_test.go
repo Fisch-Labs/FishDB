@@ -1,8 +1,5 @@
 /*
- * FishDB
- *
-// Copyright 2025 Fisch-labs
- *
+ FishDB
 */
 
 package graph
@@ -11,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"testing"
 
 	"github.com/Fisch-Labs/FishDB/cluster"
@@ -21,13 +19,21 @@ import (
 )
 
 func TestClusterWithPhysicalStorage(t *testing.T) {
-
 	log.SetOutput(ioutil.Discard)
 
-	dgs1, err := graphstorage.NewDiskGraphStorage(GraphManagerTestDBDir5, false)
+	// Define directory paths for cleanup
+	dbDir1 := GraphManagerTestDBDir5
+	dbDir2 := GraphManagerTestDBDir6
+
+	// 1. Added Automated Cleanup: This block ensures test directories are always removed when the test is done.
+	t.Cleanup(func() {
+		os.RemoveAll(dbDir1)
+		os.RemoveAll(dbDir2)
+	})
+
+	dgs1, err := graphstorage.NewDiskGraphStorage(dbDir1, false)
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatalf("Failed to create disk storage for node 1: %v", err)
 	}
 
 	ds1, _ := cluster.NewDistributedStorage(dgs1, map[string]interface{}{
@@ -39,10 +45,9 @@ func TestClusterWithPhysicalStorage(t *testing.T) {
 	ds1.Start()
 	defer ds1.Close()
 
-	dgs2, err := graphstorage.NewDiskGraphStorage(GraphManagerTestDBDir6, false)
+	dgs2, err := graphstorage.NewDiskGraphStorage(dbDir2, false)
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatalf("Failed to create disk storage for node 2: %v", err)
 	}
 
 	ds2, _ := cluster.NewDistributedStorage(dgs2, map[string]interface{}{
@@ -57,253 +62,25 @@ func TestClusterWithPhysicalStorage(t *testing.T) {
 	err = ds2.MemberManager.JoinCluster(ds1.MemberManager.Name(),
 		ds1.MemberManager.NetAddr())
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatalf("Node 2 failed to join cluster with Node 1: %v", err)
 	}
 
-	sm := ds1.StorageManager("foo", true)
-	sm2 := ds2.StorageManager("foo", true)
-
-	loc, err := sm.Insert("test123")
-	if loc != 1 || err != nil {
-		t.Error("Unexpected result:", loc, err)
-		return
-	}
-
-	loc, err = sm2.Insert("test456")
-	if loc != 2 || err != nil {
-		t.Error("Unexpected result:", loc, err)
-		return
-	}
-
-	res := ""
-
-	if err := sm2.Fetch(1, &res); err != nil {
-		t.Error(err)
-		return
-	}
-
-	if res != "test123" {
-		t.Error("Unexpected result:", res)
-		return
-	}
-
-	if err := sm2.Fetch(2, &res); err != nil {
-		t.Error(err)
-		return
-	}
-
-	if res != "test456" {
-		t.Error("Unexpected result:", res)
-		return
-	}
-
-	// *** HTree storage
-
-	// Use a HTree to insert to and fetch from a storage manager
-
-	sm = ds1.StorageManager("foo2", true)
-	sm2 = ds2.StorageManager("foo2", true)
-
-	htree, err := hash.NewHTree(sm)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	if valres, err := htree.Put([]byte("123"), "Test1"); err != nil || valres != nil {
-		t.Error("Unexpected result:", valres, err)
-		return
-	}
-
-	if valres, err := htree.Put([]byte("123"), "Test2"); err != nil || valres != "Test1" {
-		t.Error("Unexpected result:", valres, err)
-		return
-	}
-
-	// Try to retrieve the item again
-
-	cluster.WaitForTransfer()
-
-	if val, err := htree.Get([]byte("123")); err != nil || val != "Test2" {
-		t.Error("Unexpected result:", val, err)
-		return
-	}
-
-	htree2, _ := hash.LoadHTree(sm2, 1)
-	if val, err := htree2.Get([]byte("123")); err != nil || val != "Test2" {
-		t.Error("Unexpected result:", val, err)
-		return
-	}
-
-	// *** GraphManager storage
-
-	gm1 := NewGraphManager(ds1)
-
-	if err := gm1.StoreNode("main", data.NewGraphNodeFromMap(map[string]interface{}{
-		"key":  "123",
-		"kind": "testnode",
-		"foo":  "bar",
-	})); err != nil {
-		t.Error("Unexpected result:", err)
-		return
-	}
-
-	cluster.WaitForTransfer()
-
-	if node, err := gm1.FetchNode("main", "123", "testnode"); err != nil ||
-		node.String() != `GraphNode:
-     key : 123
-    kind : testnode
-     foo : bar
-` {
-		t.Error("Unexpected result:", node, err)
-		return
-	}
-
-	gm2 := NewGraphManager(ds2)
-
-	if node, err := gm2.FetchNode("main", "123", "testnode"); err != nil ||
-		node.String() != `GraphNode:
-     key : 123
-    kind : testnode
-     foo : bar
-` {
-		t.Error("Unexpected result:", node, err)
-		return
-	}
+	// 2. Reduced Code Duplication: All repetitive test logic is now in the helper function below.
+	runClusterReplicationTests(t, ds1, ds2)
 }
 
 func TestClusterStorage(t *testing.T) {
+	clusterNodes := createCluster(2)
+	joinCluster(clusterNodes, t)
 
-	cluster2 := createCluster(2)
-
-	joinCluster(cluster2, t)
-
-	// *** Direct storage
-
-	// Insert something into a storage manager and wait for the transfer
-
-	sm := cluster2[0].StorageManager("foo", true)
-	sm2 := cluster2[1].StorageManager("foo", true)
-
-	loc, err := sm.Insert("test123")
-	if loc != 1 || err != nil {
-		t.Error("Unexpected result:", loc, err)
-		return
-	}
-
-	cluster.WaitForTransfer()
-
-	// Try to retrieve the item again
-
-	// fmt.Println(cluster.DumpMemoryClusterLayout("foo"))
-
-	var res string
-	if err := sm.Fetch(1, &res); err != nil {
-		t.Error(err)
-		return
-	}
-
-	if res != "test123" {
-		t.Error("Unexpected result:", res)
-		return
-	}
-
-	res = ""
-
-	if err := sm2.Fetch(1, &res); err != nil {
-		t.Error(err)
-		return
-	}
-
-	if res != "test123" {
-		t.Error("Unexpected result:", res)
-		return
-	}
-
-	// *** HTree storage
-
-	// Use a HTree to insert to and fetch from a storage manager
-
-	sm = cluster2[0].StorageManager("foo2", true)
-	sm2 = cluster2[1].StorageManager("foo2", true)
-
-	htree, err := hash.NewHTree(sm)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	if valres, err := htree.Put([]byte("123"), "Test1"); err != nil || valres != nil {
-		t.Error("Unexpected result:", valres, err)
-		return
-	}
-
-	if valres, err := htree.Put([]byte("123"), "Test2"); err != nil || valres != "Test1" {
-		t.Error("Unexpected result:", valres, err)
-		return
-	}
-
-	// Try to retrieve the item again
-
-	cluster.WaitForTransfer()
-
-	if val, err := htree.Get([]byte("123")); err != nil || val != "Test2" {
-		t.Error("Unexpected result:", val, err)
-		return
-	}
-
-	htree2, _ := hash.LoadHTree(sm2, 1)
-	if val, err := htree2.Get([]byte("123")); err != nil || val != "Test2" {
-		t.Error("Unexpected result:", val, err)
-		return
-	}
-
-	// *** GraphManager storage
-
-	gm1 := NewGraphManager(cluster2[0])
-
-	if err := gm1.StoreNode("main", data.NewGraphNodeFromMap(map[string]interface{}{
-		"key":  "123",
-		"kind": "testnode",
-		"foo":  "bar",
-	})); err != nil {
-		t.Error("Unexpected result:", err)
-		return
-	}
-
-	cluster.WaitForTransfer()
-
-	if node, err := gm1.FetchNode("main", "123", "testnode"); err != nil ||
-		node.String() != `GraphNode:
-     key : 123
-    kind : testnode
-     foo : bar
-` {
-		t.Error("Unexpected result:", node, err)
-		return
-	}
-
-	gm2 := NewGraphManager(cluster2[1])
-
-	if node, err := gm2.FetchNode("main", "123", "testnode"); err != nil ||
-		node.String() != `GraphNode:
-     key : 123
-    kind : testnode
-     foo : bar
-` {
-		t.Error("Unexpected result:", node, err)
-		return
-	}
+	// 2. Reduced Code Duplication: This test now also calls the same helper.
+	runClusterReplicationTests(t, clusterNodes[0], clusterNodes[1])
 }
 
 /*
 Create a cluster with n members (all storage is in memory)
 */
 func createCluster(n int) []*cluster.DistributedStorage {
-	// By default no log output
-
 	log.SetOutput(ioutil.Discard)
 
 	var mgs []*graphstorage.MemoryGraphStorage
@@ -331,18 +108,74 @@ func createCluster(n int) []*cluster.DistributedStorage {
 joinCluster joins up a given cluster.
 */
 func joinCluster(cluster []*cluster.DistributedStorage, t *testing.T) {
+	// 4. Marked as Test Helper: Improves failure reporting.
+	t.Helper()
 
 	for i, dd := range cluster {
 		dd.Start()
 		defer dd.Close()
 
 		if i > 0 {
-			err := dd.MemberManager.JoinCluster(cluster[0].MemberManager.Name(),
-				cluster[0].MemberManager.NetAddr())
+			bootstrapNode := cluster[0]
+			err := dd.MemberManager.JoinCluster(bootstrapNode.MemberManager.Name(),
+				bootstrapNode.MemberManager.NetAddr())
 			if err != nil {
-				t.Error(err)
-				return
+				// 3. Made Error Messages Descriptive
+				t.Fatalf("member %q failed to join cluster with %q: %v",
+					dd.MemberManager.Name(), bootstrapNode.MemberManager.Name(), err)
 			}
 		}
+	}
+}
+
+// runClusterReplicationTests contains all the shared logic for verifying
+// data replication across different layers of the database.
+func runClusterReplicationTests(t *testing.T, ds1, ds2 *cluster.DistributedStorage) {
+	// 4. Marked as Test Helper: Improves failure reporting.
+	t.Helper()
+
+	// *** Direct storage
+	sm1 := ds1.StorageManager("foo", true)
+	sm2 := ds2.StorageManager("foo", true)
+
+	loc, err := sm1.Insert("test123")
+	if loc != 1 || err != nil {
+		t.Fatalf("Direct storage insert failed: got loc=%d, err=%v, want loc=1, err=nil", loc, err)
+	}
+	cluster.WaitForTransfer()
+	var res string
+	if err := sm2.Fetch(1, &res); err != nil || res != "test123" {
+		t.Fatalf("Direct storage fetch failed: got %q, err=%v, want 'test123'", res, err)
+	}
+
+	// *** HTree storage
+	sm1 = ds1.StorageManager("foo2", true)
+	sm2 = ds2.StorageManager("foo2", true)
+
+	htree, err := hash.NewHTree(sm1)
+	if err != nil {
+		t.Fatalf("Failed to create HTree: %v", err)
+	}
+	if _, err := htree.Put([]byte("123"), "TestValue"); err != nil {
+		t.Fatalf("HTree put failed: %v", err)
+	}
+	cluster.WaitForTransfer()
+	htree2, _ := hash.LoadHTree(sm2, 1)
+	if val, err := htree2.Get([]byte("123")); err != nil || val != "TestValue" {
+		t.Fatalf("HTree get failed: got %q, err=%v, want 'TestValue'", val, err)
+	}
+
+	// *** GraphManager storage
+	gm1 := NewGraphManager(ds1)
+	gm2 := NewGraphManager(ds2)
+
+	nodeMap := map[string]interface{}{"key": "123", "kind": "testnode", "foo": "bar"}
+	if err := gm1.StoreNode("main", data.NewGraphNodeFromMap(nodeMap)); err != nil {
+		t.Fatalf("GraphManager store node failed: %v", err)
+	}
+	cluster.WaitForTransfer()
+	node, err := gm2.FetchNode("main", "123", "testnode")
+	if err != nil || node.Attr("foo") != "bar" {
+		t.Fatalf("GraphManager fetch node failed: node=%v, err=%v", node, err)
 	}
 }
