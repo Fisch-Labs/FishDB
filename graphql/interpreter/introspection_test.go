@@ -18,7 +18,6 @@ func TestIntrospection(t *testing.T) {
 	gm, _ := songGraphGroups()
 
 	t.Run("Full introspection", func(t *testing.T) {
-		// Cleaned up the introspection query. The original had syntax errors and excessive nesting.
 		// This is a standard, full introspection query.
 		query := map[string]interface{}{
 			"operationName": "IntrospectionQuery",
@@ -167,8 +166,6 @@ fragment TypeRef on __Type {
 		filtered := formatData(sr.ProcessIntrospection())
 
 		if full != filtered {
-			// This needs thorough investigation - no point in outputting these
-			// large datastructures during failure
 			t.Error("Full and filtered introspection are different")
 			return
 		}
@@ -216,9 +213,6 @@ fragment TypeRef on __Type {
 
 		res, err := runQuery("test", "main", query, gm, nil, false)
 
-		// The original test expected `name1: null` which implies `name1` was not a valid field.
-		// I've corrected it to `name1: name` which is a valid alias for the `name` field on `__Directive`.
-		// The expected JSON is updated accordingly.
 		expectedJSON := `{
   "data": {
     "__schema": {
