@@ -114,12 +114,6 @@ NewHTree creates a new HTree.
 func NewHTree(sm storage.Manager) (*HTree, error) {
 	tree := &HTree{}
 
-	// Protect tree creation
-
-	cm := &sync.Mutex{}
-	cm.Lock()
-	defer cm.Unlock()
-
 	tree.Root = newHTreePage(tree, 0)
 
 	loc, err := sm.Insert(tree.Root.htreeNode)
@@ -140,12 +134,6 @@ LoadHTree fetches a HTree from storage
 */
 func LoadHTree(sm storage.Manager, loc uint64) (*HTree, error) {
 	var tree *HTree
-
-	// Protect tree creation
-
-	cm := &sync.Mutex{}
-	cm.Lock()
-	defer cm.Unlock()
 
 	if obj, _ := sm.FetchCached(loc); obj == nil {
 		var res htreeNode
