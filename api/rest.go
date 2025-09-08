@@ -18,6 +18,8 @@ import (
 	"github.com/Fisch-Labs/Toolkit/datautil"
 )
 
+// --- API Constants ---
+
 /*
 APIVersion is the version of the REST API
 */
@@ -38,48 +40,14 @@ APIHost is the host definition for the REST API
 */
 var APIHost = "localhost:9090"
 
+// --- Global State and Endpoint Maps ---
+
 /*
 GeneralEndpointMap contains general endpoints which should always be available
 */
 var GeneralEndpointMap = map[string]RestEndpointInst{
 	EndpointAbout:   AboutEndpointInst,
 	EndpointSwagger: SwaggerEndpointInst,
-}
-
-/*
-RestEndpointInst models a factory function for REST endpoint handlers.
-*/
-type RestEndpointInst func() RestEndpointHandler
-
-/*
-RestEndpointHandler models a REST endpoint handler.
-*/
-type RestEndpointHandler interface {
-
-	/*
-		HandleGET handles a GET request.
-	*/
-	HandleGET(w http.ResponseWriter, r *http.Request, resources []string)
-
-	/*
-		HandlePOST handles a POST request.
-	*/
-	HandlePOST(w http.ResponseWriter, r *http.Request, resources []string)
-
-	/*
-		HandlePUT handles a PUT request.
-	*/
-	HandlePUT(w http.ResponseWriter, r *http.Request, resources []string)
-
-	/*
-		HandleDELETE handles a DELETE request.
-	*/
-	HandleDELETE(w http.ResponseWriter, r *http.Request, resources []string)
-
-	/*
-		SwaggerDefs is used to describe the endpoint in swagger.
-	*/
-	SwaggerDefs(s map[string]interface{})
 }
 
 /*
@@ -121,58 +89,41 @@ Should be of type: func(pattern string, handler func(http.ResponseWriter, *http.
 */
 var HandleFunc = http.HandleFunc
 
+// --- Endpoint Interface and Default Implementation ---
+
 /*
-RegisterRestEndpoints registers all given REST endpoint handlers.
+RestEndpointInst models a factory function for REST endpoint handlers.
 */
-func RegisterRestEndpoints(endpointInsts map[string]RestEndpointInst) {
+type RestEndpointInst func() RestEndpointHandler
 
-	for url, endpointInst := range endpointInsts {
-		registered[url] = endpointInst
+/*
+RestEndpointHandler models a REST endpoint handler.
+*/
+type RestEndpointHandler interface {
+	/*
+		HandleGET handles a GET request.
+	*/
+	HandleGET(w http.ResponseWriter, r *http.Request, resources []string)
 
-		HandleFunc(url, func() func(w http.ResponseWriter, r *http.Request) {
+	/*
+		HandlePOST handles a POST request.
+	*/
+	HandlePOST(w http.ResponseWriter, r *http.Request, resources []string)
 
-			var handlerURL = url
-			var handlerInst = endpointInst
+	/*
+		HandlePUT handles a PUT request.
+	*/
+	HandlePUT(w http.ResponseWriter, r *http.Request, resources []string)
 
-			return func(w http.ResponseWriter, r *http.Request) {
+	/*
+		HandleDELETE handles a DELETE request.
+	*/
+	HandleDELETE(w http.ResponseWriter, r *http.Request, resources []string)
 
-				// Create a new handler instance
-
-				handler := handlerInst()
-
-				// Handle request in appropriate method
-
-				res := strings.TrimSpace(r.URL.Path[len(handlerURL):])
-
-				if len(res) > 0 && res[len(res)-1] == '/' {
-					res = res[:len(res)-1]
-				}
-
-				var resources []string
-
-				if res != "" {
-					resources = strings.Split(res, "/")
-				}
-
-				switch r.Method {
-				case "GET":
-					handler.HandleGET(w, r, resources)
-
-				case "POST":
-					handler.HandlePOST(w, r, resources)
-
-				case "PUT":
-					handler.HandlePUT(w, r, resources)
-
-				case "DELETE":
-					handler.HandleDELETE(w, r, resources)
-
-				default:
-					http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-				}
-			}
-		}())
-	}
+	/*
+		SwaggerDefs is used to describe the endpoint in swagger.
+	*/
+	SwaggerDefs(s map[string]interface{})
 }
 
 /*
@@ -207,4 +158,53 @@ HandleDELETE is a method stub returning an error.
 */
 func (de *DefaultEndpointHandler) HandleDELETE(w http.ResponseWriter, r *http.Request, resources []string) {
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+}
+
+// --- Registration Logic ---
+
+/*
+RegisterRestEndpoints registers all given REST endpoint handlers.
+*/
+func RegisterRestEndpoints(endpointInsts map[string]RestEndpointInst) {
+
+	for url, endpointInst := range endpointInsts {
+		registered[url] = endpointInst
+
+		HandleFunc(url, func() func(w http.ResponseWriter, r *http.Request) {
+
+			var handlerURL = url
+			var handlerInst = endpointInst
+
+			return func(w http.ResponseWriter, r *http.Request) {
+
+				// Create a new handler instance
+				handler := handlerInst()
+
+				// Parse resources from the URL path
+				res := strings.TrimSpace(r.URL.Path[len(handlerURL):])
+				if len(res) > 0 && res[len(res)-1] == '/' {
+					res = res[:len(res)-1]
+				}
+
+				var resources []string
+				if res != "" {
+					resources = strings.Split(res, "/")
+				}
+
+				// Dispatch request to the appropriate method handler
+				switch r.Method {
+				case "GET":
+					handler.HandleGET(w, r, resources)
+				case "POST":
+					handler.HandlePOST(w, r, resources)
+				case "PUT":
+					handler.HandlePUT(w, r, resources)
+				case "DELETE":
+					handler.HandleDELETE(w, r, resources)
+				default:
+					http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+				}
+			}
+		}())
+	}
 }

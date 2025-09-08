@@ -58,14 +58,16 @@ go build ./cli/fishdb.go
 **Disk-based storage**
 
 ```bash
-./fishdb -db-path /path/to/your/db
+./fishdb server -db-path /path/to/your/db
 ```
 
 **In-memory mode**
 
 ```bash
-./fishdb -mem
+./fishdb server -mem
 ```
+
+**Note:** The server runs on HTTPS by default on port `9090`. The API endpoints are rooted at `/db`. For example, to access the info endpoint, use `https://localhost:9090/db/v1/info`.
 
 ---
 
@@ -77,7 +79,7 @@ Endpoints are available in the `api/v1` directory.
 
 ### GraphQL
 
-Query and mutate graph data via `/graphql`.
+Query and mutate graph data via `/db/graphql`.
 
 ### Interactive Console
 
@@ -102,5 +104,3 @@ Contributions are welcome!
 FishDB is licensed under the MIT License.
 
 ---
-
-Go version, MIT license, “PRs Welcome”

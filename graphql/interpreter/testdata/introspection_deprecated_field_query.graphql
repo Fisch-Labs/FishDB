@@ -1,0 +1,18 @@
+query IntrospectionQuery {
+  __schema {
+    types {
+      ...FullType
+    }
+  }
+}
+
+fragment FullType on __Type {
+  kind
+  name
+  description
+  fields(includeDeprecated: true) {
+    name
+    isDeprecated
+    deprecationReason
+  }
+}

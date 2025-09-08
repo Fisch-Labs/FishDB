@@ -1,0 +1,19 @@
+query IntrospectionQuery {
+  __schema {
+    types {
+      ...FullType
+    }
+  }
+}
+
+fragment FullType on __Type {
+  kind
+  name
+  inputFields {
+    name
+    type {
+      kind
+      name
+    }
+  }
+}

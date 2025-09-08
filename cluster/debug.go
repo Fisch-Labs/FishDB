@@ -3,6 +3,7 @@ package cluster
 import (
 	"bytes"
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -26,8 +27,10 @@ func DumpMemoryClusterLayout(smname string) string {
 	buf := new(bytes.Buffer)
 
 	for _, ms := range msmap {
-		buf.WriteString(fmt.Sprintf("MemoryStorage: %s\n", ms.gs.Name()))
-		buf.WriteString(ms.dump(smname))
+			buf.WriteString("MemoryStorage: ")
+            buf.WriteString(ms.gs.Name())
+            buf.WriteString("\n")
+            buf.WriteString(ms.dump(smname))
 	}
 
 	return buf.String()
@@ -36,11 +39,14 @@ func DumpMemoryClusterLayout(smname string) string {
 /*
 WaitForTransfer waits for the datatransfer to happen.
 */
-func WaitForTransfer() {
-	for _, ms := range msmap {
-		ms.transferWorker()
-		for ms.transferRunning {
-			time.Sleep(time.Millisecond)
-		}
-	}
+ func WaitForTransfer() {
+    var wg sync.WaitGroup
+    for _, ms := range msmap {
+              wg.Add(1)
+     go func(m *memberStorage) {
+     defer wg.Done()
+                      m.transferWorker()
+             }(ms)
+      }
+      wg.Wait()
 }

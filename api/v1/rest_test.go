@@ -33,7 +33,7 @@ import (
 	"github.com/Fisch-Labs/Toolkit/httputil"
 )
 
-const TESTPORT = ":9090"
+const TESTPORT = ":9091"
 
 var gmMSM *graphstorage.MemoryGraphStorage
 

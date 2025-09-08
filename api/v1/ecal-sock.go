@@ -16,11 +16,11 @@ import (
 
 	"github.com/Fisch-Labs/FishDB/api"
 	"github.com/Fisch-Labs/FishDB/ecal"
+	"github.com/Fisch-Labs/Tide/engine"
+	"github.com/Fisch-Labs/Tide/scope"
 	"github.com/Fisch-Labs/Toolkit/cryptutil"
 	"github.com/Fisch-Labs/Toolkit/errorutil"
 	"github.com/Fisch-Labs/Toolkit/stringutil"
-	"github.com/Fisch-Labs/Tide/engine"
-	"github.com/Fisch-Labs/Tide/scope"
 	"github.com/gorilla/websocket"
 )
 

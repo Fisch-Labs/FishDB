@@ -1,0 +1,21 @@
+2025/09/08 18:11:10 FishDB 1.3.0
+2025/09/08 18:11:10 Starting datastore in db
+2025/09/08 18:11:10 Creating GraphManager instance
+flag provided but not defined: -mem
+
+Usage of ./fishdb server [options]
+
+  -export string
+    	Export the current database to a zip file
+  -help
+    	Show this help message
+  -import string
+    	Import a database from a zip file
+  -no-serv
+    	Do not start the server after initialization
+
+2025/09/08 18:11:10 Ensuring web folder: web
+2025/09/08 18:11:10 Ensuring web terminal: web/db/term.html
+2025/09/08 18:11:10 Starting HTTPS server on: 127.0.0.1:9090
+2025/09/08 18:11:11 Writing fingerprint file: web/fingerprint.json
+2025/09/08 18:11:31 Waiting for shutdown

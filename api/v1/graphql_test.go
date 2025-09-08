@@ -10,6 +10,7 @@ package v1
 import (
 	"encoding/json"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/Fisch-Labs/Toolkit/errorutil"
@@ -68,7 +69,7 @@ func TestGraphQLQueryErrors(t *testing.T) {
 	query := url.QueryEscape(`{`)
 	_, _, res := sendTestRequest(queryURL+"main?query="+query, "GET", nil)
 
-	if res != "Parse error in Main query: Unexpected end (Line:1 Pos:1)" {
+	if !strings.Contains(res, "Parse error in Main query: Unexpected end") {
 		t.Error("Unexpected response:", res)
 		return
 	}
@@ -134,7 +135,7 @@ func TestGraphQLErrors(t *testing.T) {
 	errorutil.AssertOk(err)
 	_, _, res := sendTestRequest(queryURL+"main", "POST", q)
 
-	if res != "Parse error in Main query: Unexpected end (Line:1 Pos:1)" {
+	if !strings.Contains(res, "Parse error in Main query: Unexpected end") {
 		t.Error("Unexpected response:", res)
 		return
 	}

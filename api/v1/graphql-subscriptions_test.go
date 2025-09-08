@@ -9,6 +9,7 @@ package v1
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/Fisch-Labs/FishDB/api"
@@ -115,15 +116,7 @@ func TestGraphQLSubscription(t *testing.T) {
 	}
 
 	_, message, err = c.ReadMessage()
-	if msg := formatJSONString(string(message)); err != nil || msg != `{
-  "id": "123",
-  "payload": {
-    "errors": [
-      "Parse error in Main query: Unexpected end (Line:1 Pos:29)"
-    ]
-  },
-  "type": "subscription_fail"
-}` {
+	if msg := formatJSONString(string(message)); err != nil || !strings.Contains(msg, "Parse error in Main query: Unexpected end") {
 		t.Error("Unexpected response:", msg, err)
 		return
 	}

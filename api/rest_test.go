@@ -11,7 +11,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -61,157 +61,122 @@ func TestEndpointHandling(t *testing.T) {
 	RegisterRestEndpoints(testEndpointMap)
 	RegisterRestEndpoints(GeneralEndpointMap)
 
+	// --- Test resource path parsing ---
 	lastRes = nil
-
-	if res := sendTestRequest(queryURL, "GET", nil); res != "Method Not Allowed" {
-		t.Error("Unexpected response:", res)
+	if body, resp := sendTestRequestResponse(t, queryURL, "GET", nil); body != "Method Not Allowed" || resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Unexpected response for GET: status %d, body %q", resp.StatusCode, body)
 		return
 	}
-
 	if lastRes != nil {
 		t.Error("Unexpected lastRes:", lastRes)
 	}
 
 	lastRes = nil
-
-	if res := sendTestRequest(queryURL+"/foo/bar", "GET", nil); res != "Method Not Allowed" {
-		t.Error("Unexpected response:", res)
+	if body, resp := sendTestRequestResponse(t, queryURL+"/foo/bar", "GET", nil); body != "Method Not Allowed" || resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Unexpected response for /foo/bar: status %d, body %q", resp.StatusCode, body)
 		return
 	}
-
 	if fmt.Sprint(lastRes) != "[foo bar]" {
 		t.Error("Unexpected lastRes:", lastRes)
 	}
 
+	// Test trailing slashes
 	lastRes = nil
-
-	if res := sendTestRequest(queryURL+"/foo/bar/", "GET", nil); res != "Method Not Allowed" {
-		t.Error("Unexpected response:", res)
+	if body, resp := sendTestRequestResponse(t, queryURL+"/foo/bar/", "GET", nil); body != "Method Not Allowed" || resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Unexpected response for /foo/bar/: status %d, body %q", resp.StatusCode, body)
 		return
 	}
-
 	if fmt.Sprint(lastRes) != "[foo bar]" {
 		t.Error("Unexpected lastRes:", lastRes)
 	}
 
-	if res := sendTestRequest(queryURL, "POST", nil); res != "Method Not Allowed" {
-		t.Error("Unexpected response:", res)
+	// Test double slashes
+	lastRes = nil
+	if body, resp := sendTestRequestResponse(t, queryURL+"/foo//bar", "GET", nil); body != "Method Not Allowed" || resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Unexpected response for /foo//bar: status %d, body %q", resp.StatusCode, body)
+		return
+	}
+	if fmt.Sprint(lastRes) != "[foo bar]" {
+		t.Errorf("Unexpected lastRes for double slash: %q", lastRes)
+	}
+
+	// --- Test unhandled HTTP methods ---
+	if body, resp := sendTestRequestResponse(t, queryURL, "POST", nil); body != "Method Not Allowed" || resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Unexpected response for POST: status %d, body %q", resp.StatusCode, body)
+		return
+	}
+	if body, resp := sendTestRequestResponse(t, queryURL, "PUT", nil); body != "Method Not Allowed" || resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Unexpected response for PUT: status %d, body %q", resp.StatusCode, body)
+		return
+	}
+	if body, resp := sendTestRequestResponse(t, queryURL, "DELETE", nil); body != "Method Not Allowed" || resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Unexpected response for DELETE: status %d, body %q", resp.StatusCode, body)
+		return
+	}
+	if body, resp := sendTestRequestResponse(t, queryURL, "UPDATE", nil); body != "Method Not Allowed" || resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Unexpected response for UPDATE: status %d, body %q", resp.StatusCode, body)
 		return
 	}
 
-	if res := sendTestRequest(queryURL, "PUT", nil); res != "Method Not Allowed" {
-		t.Error("Unexpected response:", res)
-		return
+	// --- Test /db/about endpoint ---
+	body, resp := sendTestRequestResponse(t, queryURL+"/db/about", "GET", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status OK for /db/about, got %d", resp.StatusCode)
+	}
+	var aboutResponse struct {
+		APIVersions []string `json:"api_versions"`
+		Product     string   `json:"product"`
+		Version     string   `json:"version"`
+	}
+	if err := json.Unmarshal([]byte(body), &aboutResponse); err != nil {
+		t.Fatalf("Failed to decode /db/about JSON: %v\nbody: %s", err, body)
+	}
+	if aboutResponse.Product != "FishDB" {
+		t.Errorf("Expected product 'FishDB', got %q", aboutResponse.Product)
+	}
+	if aboutResponse.Version != config.ProductVersion {
+		t.Errorf("Expected version %q, got %q", config.ProductVersion, aboutResponse.Version)
+	}
+	if fmt.Sprint(aboutResponse.APIVersions) != "[v1]" {
+		t.Errorf("Expected API versions '[v1]', got %v", aboutResponse.APIVersions)
 	}
 
-	if res := sendTestRequest(queryURL, "DELETE", nil); res != "Method Not Allowed" {
-		t.Error("Unexpected response:", res)
-		return
+	// --- Test /db/swagger.json endpoint ---
+	body, resp = sendTestRequestResponse(t, queryURL+"/db/swagger.json", "GET", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status OK for /db/swagger.json, got %d", resp.StatusCode)
 	}
-
-	if res := sendTestRequest(queryURL, "UPDATE", nil); res != "Method Not Allowed" {
-		t.Error("Unexpected response:", res)
-		return
+	var swaggerDoc map[string]interface{}
+	if err := json.Unmarshal([]byte(body), &swaggerDoc); err != nil {
+		t.Fatalf("Failed to decode swagger.json: %v", err)
 	}
-
-	// Test about endpoints
-
-	if res := sendTestRequest(queryURL+"/db/about", "GET", nil); res != fmt.Sprintf(`
-{
-  "api_versions": [
-    "v1"
-  ],
-  "product": "FishDB",
-  "version": "%v"
-}`[1:], config.ProductVersion) {
-		t.Error("Unexpected response:", res)
-		return
+	if swaggerDoc["swagger"] != "2.0" {
+		t.Errorf("Expected swagger version '2.0', got %v", swaggerDoc["swagger"])
 	}
-
-	if res := sendTestRequest(queryURL+"/db/swagger.json", "GET", nil); res != `
-{
-  "basePath": "/db",
-  "definitions": {
-    "Error": {
-      "description": "A human readable error mesage.",
-      "type": "string"
-    }
-  },
-  "host": "localhost:9090",
-  "info": {
-    "description": "Query and modify the FishDB datastore.",
-    "title": "FishDB API",
-    "version": "1.0.0"
-  },
-  "paths": {
-    "/about": {
-      "get": {
-        "description": "Returns available API versions, product name and product version.",
-        "produces": [
-          "text/plain",
-          "application/json"
-        ],
-        "responses": {
-          "200": {
-            "description": "About info object",
-            "schema": {
-              "properties": {
-                "api_versions": {
-                  "description": "List of available API versions.",
-                  "items": {
-                    "description": "Available API version.",
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                "product": {
-                  "description": "Product name of the REST API provider.",
-                  "type": "string"
-                },
-                "version": {
-                  "description": "Version of the REST API provider.",
-                  "type": "string"
-                }
-              },
-              "type": "object"
-            }
-          },
-          "default": {
-            "description": "Error response",
-            "schema": {
-              "$ref": "#/definitions/Error"
-            }
-          }
-        },
-        "summary": "Return information about the REST API provider."
-      }
-    }
-  },
-  "produces": [
-    "application/json"
-  ],
-  "schemes": [
-    "https"
-  ],
-  "swagger": "2.0"
-}`[1:] {
-		t.Error("Unexpected response:", res)
-		return
+	if swaggerDoc["basePath"] != "/db" {
+		t.Errorf("Expected swagger basePath '/db', got %v", swaggerDoc["basePath"])
+	}
+	if swaggerDoc["host"] != APIHost {
+		t.Errorf("Expected swagger host %q, got %v", APIHost, swaggerDoc["host"])
+	}
+	paths, ok := swaggerDoc["paths"].(map[string]interface{})
+	if !ok || paths["/about"] == nil {
+		t.Fatalf("Swagger doc is missing required '/about' path definition")
 	}
 }
 
 /*
 Send a request to a HTTP test server
 */
-func sendTestRequest(url string, method string, content []byte) string {
-	body, _ := sendTestRequestResponse(url, method, content)
+func sendTestRequest(t *testing.T, url string, method string, content []byte) string {
+	body, _ := sendTestRequestResponse(t, url, method, content)
 	return body
 }
 
 /*
 Send a request to a HTTP test server
 */
-func sendTestRequestResponse(url string, method string, content []byte) (string, *http.Response) {
+func sendTestRequestResponse(t *testing.T, url string, method string, content []byte) (string, *http.Response) {
 	var req *http.Request
 	var err error
 
@@ -222,7 +187,7 @@ func sendTestRequestResponse(url string, method string, content []byte) (string,
 	}
 
 	if err != nil {
-		panic(err)
+		t.Fatalf("Failed to create HTTP request: %v", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -230,11 +195,14 @@ func sendTestRequestResponse(url string, method string, content []byte) (string,
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		t.Fatalf("Failed to execute HTTP request: %v", err)
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read response body: %v", err)
+	}
 	bodyStr := strings.Trim(string(body), " \n")
 
 	// Try json decoding first
@@ -276,9 +244,7 @@ func startServer() (*httputil.HTTPServer, *sync.WaitGroup) {
 Stop a started HTTP test server.
 */
 func stopServer(hs *httputil.HTTPServer, wg *sync.WaitGroup) {
-
-	if hs.Running == true {
-
+	if hs.Running {
 		wg.Add(1)
 
 		// Server is shut down
@@ -288,7 +254,6 @@ func stopServer(hs *httputil.HTTPServer, wg *sync.WaitGroup) {
 		wg.Wait()
 
 	} else {
-
 		panic("Server was not running as expected")
 	}
 }

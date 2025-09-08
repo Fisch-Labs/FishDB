@@ -1,0 +1,32 @@
+query IntrospectionQuery {
+     __schema {
+       queryType { name }
+       mutationType { name }
+       subscriptionType { name }
+       directives {
+         name
+         description
+         locations
+         args {
+           ...InputValue
+           ...InputValue @skip(if: true)
+... {
+name
+}
+         }
+name1: name1
+       }
+     }
+   }
+
+   fragment InputValue on __InputValue {
+     name
+     description
+     type { ...TypeRef }
+     defaultValue
+   }
+
+   fragment TypeRef on __Type {
+     kind
+     name
+   }

@@ -18,3 +18,5 @@
 /examples/data-mining/docker-images/frontend/app/graphiql
 external_deps/
 .DS_Store
+fishdb.lck
+ssl/

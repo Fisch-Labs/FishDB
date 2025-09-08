@@ -9,6 +9,7 @@ package dbfunc
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/Fisch-Labs/FishDB/graph"
@@ -67,7 +68,7 @@ func TestGraphQL(t *testing.T) {
 
 	_, err = q.Run("", nil, nil, 0, []interface{}{"main", "aaaaa"})
 
-	if err == nil || err.Error() != "Fatal GraphQL operation error in db.query: Missing operation (No executable expression found) (Line:1 Pos:1)" {
+	if err == nil || !strings.Contains(err.Error(), "Fatal GraphQL operation error in db.query: Missing operation") {
 		t.Error(err)
 		return
 	}

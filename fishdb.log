@@ -1,0 +1,11 @@
+Usage of ./fishdb.mac <tool>
+
+FishDB graph based database
+
+Available commands:
+
+    console   FishDB server console
+    server    Start FishDB server
+
+Use ./fishdb.mac <command> -help for more information about a given command.
+

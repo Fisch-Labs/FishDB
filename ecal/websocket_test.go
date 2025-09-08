@@ -15,13 +15,13 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/Fisch-Labs/Tide/engine"
 	"github.com/Fisch-Labs/Toolkit/errorutil"
 	"github.com/Fisch-Labs/Toolkit/httputil"
-	"github.com/Fisch-Labs/Tide/engine"
 	"github.com/gorilla/websocket"
 )
 
-const TESTPORT = ":9090"
+const TESTPORT = ":9092"
 
 func TestWebsocketHandling(t *testing.T) {
 	sockUpgrader := websocket.Upgrader{

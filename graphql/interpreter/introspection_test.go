@@ -18,7 +18,6 @@ func TestIntrospection(t *testing.T) {
 	gm, _ := songGraphGroups()
 
 	t.Run("Full introspection", func(t *testing.T) {
-		// This is a standard, full introspection query.
 		query := map[string]interface{}{
 			"operationName": "IntrospectionQuery",
 			"query": `
@@ -105,6 +104,10 @@ fragment TypeRef on __Type {
               ofType {
                 kind
                 name
+                ofType {
+                  kind
+                  name
+                }
               }
             }
           }
@@ -159,7 +162,6 @@ fragment TypeRef on __Type {
 		}
 
 		// Evaluate the query
-		// NOTE: This AST path is very specific and might break if the query changes.
 		sr := ast.Children[0].Children[0].Children[0].Runtime.(*selectionSetRuntime)
 
 		full := formatData(sr.ProcessFullIntrospection())
@@ -174,42 +176,37 @@ fragment TypeRef on __Type {
 	// Now try out a reduced version
 	t.Run("Reduced introspection", func(t *testing.T) {
 		query := map[string]interface{}{
-			"operationName": "IntrospectionQuery",
+			"operationName": nil,
 			"query": `
-query IntrospectionQuery {
-  __schema {
-    queryType { name }
-    mutationType { name }
-    subscriptionType { name }
-    directives {
-      name
-      description
-      locations
-      args {
-        ...InputValue
-        ...InputValue @skip(if: true)
-        ... {
+    query IntrospectionQuery {
+      __schema {
+        queryType { name }
+        mutationType { name }
+        subscriptionType { name }
+        directives {
           name
+          description
+          locations
+          args {
+            ...InputValue
+            ...InputValue @skip(if: true)
+          }
         }
       }
-      name1: name
     }
-  }
-}
 
-fragment InputValue on __InputValue {
-  name
-  description
-  type { ...TypeRef }
-  defaultValue
-}
+    fragment InputValue on __InputValue {
+      name
+      description
+      type { ...TypeRef }
+      defaultValue
+    }
 
-fragment TypeRef on __Type {
-  kind
-  name
-}
-`,
-		}
+    fragment TypeRef on __Type {
+      kind
+      name
+    }
+    `}
 
 		res, err := runQuery("test", "main", query, gm, nil, false)
 
@@ -235,8 +232,7 @@ fragment TypeRef on __Type {
             "FRAGMENT_SPREAD",
             "INLINE_FRAGMENT"
           ],
-          "name": "skip",
-          "name1": "skip"
+          "name": "skip"
         },
         {
           "args": [
@@ -256,8 +252,7 @@ fragment TypeRef on __Type {
             "FRAGMENT_SPREAD",
             "INLINE_FRAGMENT"
           ],
-          "name": "include",
-          "name1": "include"
+          "name": "include"
         }
       ],
       "mutationType": {

@@ -228,77 +228,81 @@ EventNodeCreated is thrown when a node was created.
 
 Parameters: partition of created node, created node
 */
-const EventNodeCreated = 0x01
+// Graph events define the set of actions that can trigger the rules engine.
+// The sequence is generated using iota, starting from 1
+const (
+	EventNodeCreated = iota + 1
 
-/*
-EventNodeUpdated is thrown when a node was updated.
+	/*
+	   EventNodeUpdated is thrown when a node was updated.
 
-Parameters: partition of updated node, updated node, old node
-*/
-const EventNodeUpdated = 0x02
+	   Parameters: partition of updated node, updated node, old node
+	*/
+	EventNodeUpdated
 
-/*
-EventNodeDeleted is thrown when a node was deleted.
+	/*
+	   EventNodeDeleted is thrown when a node was deleted.
 
-Parameters: partition of deleted node, deleted node
-*/
-const EventNodeDeleted = 0x03
+	   Parameters: partition of deleted node, deleted node
+	*/
+	EventNodeDeleted
 
-/*
-EventEdgeCreated is thrown when an edge was created.
+	/*
+	   EventEdgeCreated is thrown when an edge was created.
 
-Parameters: partition of created edge, created edge
-*/
-const EventEdgeCreated = 0x04
+	   Parameters: partition of created edge, created edge
+	*/
+	EventEdgeCreated
 
-/*
-EventEdgeUpdated is thrown when an edge was updated.
+	/*
+	   EventEdgeUpdated is thrown when an edge was updated.
 
-Parameters: partition of updated edge, updated edge, old edge
-*/
-const EventEdgeUpdated = 0x05
+	   Parameters: partition of updated edge, updated edge, old edge
+	*/
+	EventEdgeUpdated
 
-/*
-EventEdgeDeleted is thrown when an edge was deleted.
+	/*
+	   EventEdgeDeleted is thrown when an edge was deleted.
 
-Parameters: partition of deleted edge, deleted edge
-*/
-const EventEdgeDeleted = 0x06
+	   Parameters: partition of deleted edge, deleted edge
+	*/
+	EventEdgeDeleted
 
-/*
-EventNodeStore is thrown before a node is stored (always overwriting existing values).
+	/*
+	   EventNodeStore is thrown before a node is stored (always overwriting existing values).
 
-Parameters: partition of node to store, node to store
-*/
-const EventNodeStore = 0x07
+	   Parameters: partition of node to store, node to store
+	*/
+	EventNodeStore
 
-/*
-EventNodeUpdate is thrown before a node is updated.
+	/*
+	   EventNodeUpdate is thrown before a node is updated.
 
-Parameters: partition of node to update, node to update
-*/
-const EventNodeUpdate = 0x08
+	   Parameters: partition of node to update, node to update
+	*/
+	EventNodeUpdate
 
-/*
-EventNodeDelete is thrown before a node is deleted.
+	/*
+	   EventNodeDelete is thrown before a node is deleted.
 
-Parameters: partition of node to delete, key of node to delete, kind of node to delete
-*/
-const EventNodeDelete = 0x09
+	   Parameters: partition of node to delete, key of node to delete, kind of node to delete
+	*/
+	EventNodeDelete
 
-/*
-EventEdgeStore is thrown before an edge is stored (always overwriting existing values).
+	/*
+	   EventEdgeStore is thrown before an edge is stored (always overwriting existing values).
 
-Parameters: partition of stored edge, stored edge
-*/
-const EventEdgeStore = 0x0A
+	   Parameters: partition of stored edge, stored edge
+	*/
+	EventEdgeStore
 
-/*
-EventEdgeDelete is thrown before an edge is deleted.
+	/*
+	   EventEdgeDelete is thrown before an edge is deleted.
 
-Parameters: partition of deleted edge, key of edge to delete, kind of edge to delete
-*/
-const EventEdgeDelete = 0x0B
+	   Parameters: partition of deleted edge, key of edge to delete, kind of edge to delete
+	*/
+	EventEdgeDelete
+)
 
 /*
 ErrEventHandled is a special error which an event handler can return to
