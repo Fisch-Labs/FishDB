@@ -84,7 +84,7 @@ Query and mutate graph data via `/db/graphql`.
 ### Interactive Console
 
 ```bash
-./fishdb -i
+./fishdb console
 ```
 
 Manage users, run queries, and explore FishDB interactively.
